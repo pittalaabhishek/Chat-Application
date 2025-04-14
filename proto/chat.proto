@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package chat;
+
+option go_package = ".;chat";
+
+service ChatService {
+    // Unary RPC for sending private messages
+    rpc SendPrivateMessage (PrivateMessageRequest) returns (PrivateMessageResponse);
+    
+    // Server-side streaming for chatroom updates
+    rpc JoinChatRoom (ChatRoomRequest) returns (stream ChatRoomMessage);
+    
+    // Bidirectional streaming for continuous chat
+    rpc ChatStream (stream ChatMessage) returns (stream ChatMessage);
+}
+
+message PrivateMessageRequest {
+    string from = 1;
+    string to = 2;
+    string content = 3;
+}
+
+message PrivateMessageResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message ChatRoomRequest {
+    string user = 1;
+    string room = 2;
+}
+
+message ChatRoomMessage {
+    string user = 1;
+    string content = 2;
+}
+
+message ChatMessage {
+    string user = 1;
+    string content = 2;
+}
