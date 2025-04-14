@@ -1,4 +1,4 @@
-module github.com/yourusername/chat-system
+module chat-application
 
 go 1.23.7
 
