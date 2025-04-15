@@ -12,7 +12,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	pb "github.com/yourusername/chat" // Update with your module path
 	pb "chat-application/gen/chat"
 )
 
@@ -22,6 +21,8 @@ func main() {
 		log.Fatalf("did not connect: %v", err)
 	}
 	defer conn.Close()
+
+	var currentRoom string
 
 	client := pb.NewChatServiceClient(conn)
 
@@ -80,6 +81,7 @@ func main() {
 			if strings.HasPrefix(text, "/join ") {
 				room := strings.TrimPrefix(text, "/join ")
 				room = strings.TrimSpace(room)
+				currentRoom = room
 
 				roomStream, err := client.JoinChatRoom(context.Background(), &pb.ChatRoomRequest{
 					User: username,
@@ -104,12 +106,25 @@ func main() {
 			}
 
 			// Send regular chat message
-			if err := stream.Send(&pb.ChatMessage{
-				User:    username,
-				Content: text,
-			}); err != nil {
-				log.Printf("error sending message: %v", err)
-				return
+			if currentRoom != "" {
+				// Send room-specific message
+				if err := stream.Send(&pb.ChatMessage{
+					User:    username,
+					Content: text,
+					Room:    currentRoom,  // Add this line
+				}); err != nil {
+					log.Printf("error sending message: %v", err)
+					return
+				}
+			} else {
+				// Send general chat message
+				if err := stream.Send(&pb.ChatMessage{
+					User:    username,
+					Content: text,
+				}); err != nil {
+					log.Printf("error sending message: %v", err)
+					return
+				}
 			}
 		}
 	}()

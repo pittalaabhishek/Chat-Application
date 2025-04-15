@@ -39,4 +39,5 @@ message ChatRoomMessage {
 message ChatMessage {
     string user = 1;
     string content = 2;
+    string room = 3;
 }
