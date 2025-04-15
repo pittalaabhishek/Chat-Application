@@ -137,16 +137,32 @@ func (s *chatServer) ChatStream(stream pb.ChatService_ChatStreamServer) error {
 	go func() {
 		for {
 			msg, err := stream.Recv()
-			if err != nil {
-				return
-			}
+        if err != nil {
+            return
+        }
 
-			// Broadcast to all connected streams
-			s.mu.RLock()
-			for _, ch := range s.chatStreams {
-				ch <- msg
-			}
-			s.mu.RUnlock()
+        if msg.Room != "" {
+            // Room-specific message
+            s.mu.RLock()
+            if roomUsers, exists := s.chatRooms[msg.Room]; exists {
+                for username, ch := range roomUsers {
+                    if username != msg.User { // Don't echo to sender
+                        ch <- &pb.ChatRoomMessage{
+                            User:    msg.User,
+                            Content: msg.Content,
+                        }
+                    }
+                }
+            }
+            s.mu.RUnlock()
+        } else {
+            // General message
+            s.mu.RLock()
+            for _, ch := range s.chatStreams {
+                ch <- msg
+            }
+            s.mu.RUnlock()
+        }
 		}
 	}()
 
