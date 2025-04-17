@@ -79,6 +79,10 @@ func main() {
 			}
 
 			if strings.HasPrefix(text, "/join ") {
+				if currentRoom != "" {
+					fmt.Printf("You are already in room '%s'. Please exit first with /exit\n", currentRoom)
+					continue
+				}
 				room := strings.TrimPrefix(text, "/join ")
 				room = strings.TrimSpace(room)
 				currentRoom = room
@@ -102,6 +106,37 @@ func main() {
 						fmt.Printf("[%s] %s: %s\n", room, msg.User, msg.Content)
 					}
 				}()
+				continue
+			}
+
+			if strings.HasPrefix(text, "/exit") {
+				if currentRoom == "" {
+					fmt.Println("Not currently in any room")
+					continue
+				}
+			
+				// Send special "exit" request
+				exitReq := &pb.ChatRoomRequest{
+					User: username,
+					Room: "!exit", // Special room name to indicate exit
+				}
+			
+				// We reuse the JoinChatRoom RPC but with special room name
+				exitStream, err := client.JoinChatRoom(context.Background(), exitReq)
+				if err != nil {
+					log.Printf("error leaving room: %v", err)
+					continue
+				}
+			
+				// Wait for the exit confirmation
+				msg, err := exitStream.Recv()
+				if err != nil {
+					log.Printf("error receiving exit confirmation: %v", err)
+					continue
+				}
+			
+				fmt.Println(msg.Content)
+				currentRoom = ""
 				continue
 			}
 
