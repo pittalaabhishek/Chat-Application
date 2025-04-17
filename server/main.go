@@ -59,6 +59,46 @@ func (s *chatServer) SendPrivateMessage(ctx context.Context, req *pb.PrivateMess
 
 // JoinChatRoom implements server-side streaming for chatroom updates
 func (s *chatServer) JoinChatRoom(req *pb.ChatRoomRequest, stream pb.ChatService_JoinChatRoomServer) error {
+	
+	if req.Room == "!exit" {
+        s.mu.Lock()
+        defer s.mu.Unlock()
+        
+        found := false
+        for roomName, users := range s.chatRooms {
+            if _, exists := users[req.User]; exists {
+                delete(users, req.User)
+                found = true
+                
+                // Notify others in the room
+                for _, ch := range users {
+                    ch <- &pb.ChatRoomMessage{
+                        User:    "System",
+                        Content: fmt.Sprintf("%s left the room", req.User),
+                    }
+                }
+                
+                if len(users) == 0 {
+                    delete(s.chatRooms, roomName)
+                }
+                
+                // Send success message to client
+                stream.Send(&pb.ChatRoomMessage{
+                    User:    "System",
+                    Content: fmt.Sprintf("Left room %s", roomName),
+                })
+                return nil
+            }
+        }
+        
+        if !found {
+            stream.Send(&pb.ChatRoomMessage{
+                User:    "System",
+                Content: "You were not in any room",
+            })
+            return nil
+        }
+    }
 	// Create a channel for this user in the chat room
 	userChan := make(chan *pb.ChatRoomMessage, 100)
 
